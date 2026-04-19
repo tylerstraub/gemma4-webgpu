@@ -3,6 +3,11 @@
 > Browser-local Gemma 4 E2B inference via purpose-built WGSL and raw
 > WebGPU. An open-source AI community research project.
 
+**Try it live:** **<https://tylerstraub.github.io/gemma4-webgpu/>** —
+loads the model directly in your WebGPU-capable browser. First load
+streams ~2.9 GB from Hugging Face; every token after that is
+generated on your GPU. No server, no API key, no install.
+
 **Status: v0.1 — reference implementation, iterating on community
 data.** The engine achieves 125+ tps on a short workload
 (maxTokens=64) and 116 tps on a longer decode (maxTokens=200) for
