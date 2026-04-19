@@ -1,0 +1,19 @@
+# editorconfig.org — consistent indentation, line endings, and whitespace
+# across editors. Works with VS Code, JetBrains IDEs, Neovim, Sublime, etc.
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Markdown uses trailing whitespace (two spaces = line break), so don't trim.
+[*.md]
+trim_trailing_whitespace = false
+
+# Makefiles require hard tabs.
+[{Makefile,*.mk}]
+indent_style = tab

@@ -1,0 +1,959 @@
+/*
+ * gemma4-webgpu — human-first demo, visual system.
+ *
+ * Aesthetic: brutalist research-terminal. All-monospace, near-black surfaces,
+ * phosphor-tinted accent, hairline atmospheric layers (grain + scanlines).
+ * No sans-serif, no rounded corners, no decorative flourish for its own sake
+ * — every glyph on screen is data or data-chrome.
+ *
+ * Body copy: IBM Plex Mono (institutional-technical, excellent at small
+ * sizes). Display + data: JetBrains Mono (sharp, high x-height, variable
+ * weight). Both served same-origin via @fontsource to satisfy COEP
+ * require-corp.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces — layered near-black. Each tier is a perceptible step up. */
+  --bg:          #070708;
+  --bg-raised:  #0f0f11;
+  --bg-input:   #17171a;
+  --bg-hover:   #1d1d21;
+  --bg-plot:    #0b0b0d;
+
+  /* Hairline borders — thin and cold. */
+  --border:         #232327;
+  --border-strong:  #3a3a40;
+  --border-focus:   #5c5c65;
+
+  /* Text — off-white, never pure. */
+  --fg:         #e3e3e1;
+  --fg-strong:  #f7f6f2;
+  --muted:      #7a7a7f;
+  --muted-strong: #a5a5ab;
+
+  /* Accents — electric cyan as primary. Phosphor-green as secondary data tint. */
+  --accent:       #6ed3ff;
+  --accent-dim:   #3d7fa3;
+  --accent-bg:    rgba(110, 211, 255, 0.10);
+  --phosphor:     #88d9a2;  /* verified / pass / good data */
+  --phosphor-dim: rgba(136, 217, 162, 0.16);
+
+  /* Semantic */
+  --good: #88d9a2;
+  --warn: #f0c674;
+  --bad:  #ff6b6b;
+
+  /* Typography */
+  --font-display: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-mono:    'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-body:    'IBM Plex Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-sans:    'IBM Plex Mono', ui-monospace, monospace; /* legacy alias */
+
+  /* Spacing — tight 4-based scale. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss01', 'cv01', 'cv02';
+}
+
+/* Respect explicit OS-level light preference but don't design for it. */
+@media (prefers-color-scheme: light) {
+  :root { color-scheme: dark; }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* The page is a flat, near-black surface. The brutalist identity lives in
+ * the corner brackets, typography, and accent glows — not background
+ * texture. Grain + scanlines were tried and pulled; they competed with
+ * the data for attention. */
+
+/* ── Typography ─────────────────────────────────────────────────── */
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--fg-strong); background: var(--accent); padding: 0 2px; margin: 0 -2px; }
+
+code, pre, .mono { font-family: var(--font-mono); }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+::selection { background: var(--accent); color: var(--bg); }
+
+/* ── Layout ─────────────────────────────────────────────────────── */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-5) var(--s-5) var(--s-7);
+}
+
+/* ── Page header ────────────────────────────────────────────────── */
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: var(--s-4);
+  margin-bottom: var(--s-5);
+  position: relative;
+  flex-wrap: wrap;
+  animation: reveal 0.6s ease-out 0.05s backwards;
+}
+/* Double-rule divider — typographic weight, not just a line. */
+.page-header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background:
+    linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px) 0 0/100% 3px,
+    linear-gradient(to bottom, transparent 2px, var(--border) 2px, var(--border) 3px) 0 0/100% 3px;
+}
+
+.page-header .brand { display: flex; flex-direction: column; gap: var(--s-1); }
+.page-header h1 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0;
+  letter-spacing: -0.01em;
+  color: var(--fg-strong);
+  font-weight: 700;
+}
+.page-header h1::before {
+  content: '> ';
+  color: var(--accent);
+  font-weight: 500;
+  display: inline-block;
+  animation: cursor-blink 1s steps(1) 0s 3;
+}
+.page-header .tagline {
+  color: var(--muted-strong);
+  font-size: 0.78rem;
+  margin: 0;
+  max-width: 48rem;
+  line-height: 1.6;
+}
+.page-header nav {
+  display: flex;
+  gap: var(--s-4);
+  align-items: center;
+}
+.page-header nav a {
+  font-size: 0.76rem;
+  color: var(--muted-strong);
+  padding: 2px 0;
+}
+.page-header nav a:hover { color: var(--fg-strong); background: transparent; padding: 2px 0; margin: 0; }
+
+@keyframes cursor-blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+/* ── Status bar ─────────────────────────────────────────────────── */
+
+.status-bar {
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  margin-bottom: var(--s-4);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  flex-wrap: wrap;
+  position: relative;
+  animation: reveal 0.6s ease-out 0.15s backwards;
+}
+/* Corner brackets — brutalist framing signature. */
+.status-bar::before, .status-bar::after {
+  content: '';
+  position: absolute;
+  width: 10px; height: 10px;
+  border: 1px solid var(--accent);
+}
+.status-bar::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.status-bar::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 2px var(--s-2);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--muted-strong);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+}
+.status-chip.uninit   { color: var(--muted); }
+.status-chip.loading  { color: var(--warn); border-color: var(--warn); }
+.status-chip.ready    { color: var(--phosphor); border-color: var(--phosphor); background: var(--phosphor-dim); }
+.status-chip.generating, .status-chip.busy, .status-chip.reiniting {
+  color: var(--accent); border-color: var(--accent); background: var(--accent-bg);
+}
+.status-chip.error    { color: var(--bad); border-color: var(--bad); }
+.status-chip .dot {
+  width: 5px; height: 5px;
+  background: currentColor;
+  display: inline-block;
+  box-shadow: 0 0 4px currentColor;
+}
+.status-chip.generating .dot, .status-chip.busy .dot, .status-chip.loading .dot {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+.status-bar .status-line {
+  flex: 1;
+  min-width: 16rem;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-bar .status-meta {
+  display: flex;
+  gap: var(--s-3);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.status-bar .status-meta b { color: var(--fg-strong); font-weight: 500; }
+
+/* ── Load hero ──────────────────────────────────────────────────── */
+
+.load-hero {
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: var(--s-5);
+  margin-bottom: var(--s-5);
+  position: relative;
+  animation: reveal 0.6s ease-out 0.22s backwards;
+}
+/* Hero-specific corner brackets, slightly larger. */
+.load-hero::before, .load-hero::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  border: 1px solid var(--accent);
+  opacity: 0.8;
+}
+.load-hero::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.load-hero::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+.load-hero h2 {
+  margin: 0 0 var(--s-3);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--fg-strong);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.load-hero h2::before {
+  content: '[ ';
+  color: var(--accent);
+  font-weight: 400;
+}
+.load-hero h2::after {
+  content: ' ]';
+  color: var(--accent);
+  font-weight: 400;
+}
+.load-hero p {
+  color: var(--muted-strong);
+  margin: 0 0 var(--s-4);
+  max-width: 54rem;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+.load-hero .progress { margin-top: var(--s-3); font-size: 0.76rem; color: var(--muted-strong); }
+.load-hero .progress-bar {
+  width: 100%;
+  height: 2px;
+  background: var(--bg-input);
+  margin-top: var(--s-2);
+  overflow: hidden;
+  position: relative;
+}
+.load-hero .progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--accent-dim), var(--accent));
+  transition: width 0.1s linear;
+  box-shadow: 0 0 6px var(--accent);
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--s-5);
+  /* Horizontal-only scroll. CSS implicitly flips the other axis from
+   * `visible` to `auto` whenever one axis is non-visible, so the
+   * explicit `hidden` here is required — otherwise the underline
+   * pseudo-element at `bottom: -1px` would push the tab strip into
+   * vertical-overflow territory and trigger a stray vertical scrollbar. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  position: relative;
+  animation: reveal 0.6s ease-out 0.3s backwards;
+}
+/* Sliding underline — driven by JS setting --tab-underline-x + -w vars on .tabs. */
+.tabs::after {
+  content: '';
+  position: absolute;
+  left: var(--tab-underline-x, 0px);
+  bottom: -1px;
+  width: var(--tab-underline-w, 0px);
+  height: 2px;
+  background: var(--accent);
+  transition: left 0.28s cubic-bezier(0.55, 0.05, 0.25, 0.95),
+              width 0.28s cubic-bezier(0.55, 0.05, 0.25, 0.95);
+  box-shadow: 0 0 8px var(--accent);
+}
+.tab {
+  padding: var(--s-3) var(--s-4);
+  background: transparent;
+  border: 0;
+  color: var(--muted-strong);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+  letter-spacing: 0.01em;
+}
+.tab:hover { color: var(--fg); }
+.tab.active { color: var(--fg-strong); }
+.tab[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+.panel { display: none; animation: panel-reveal 0.35s ease-out; }
+.panel.active { display: block; }
+@keyframes panel-reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+
+button, .btn {
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-raised);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.08s;
+  letter-spacing: 0.02em;
+  display: inline-block;
+}
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+  color: var(--fg-strong);
+}
+button:active:not(:disabled), .btn:active:not(:disabled) { transform: translateY(1px); }
+button:disabled, .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+button[hidden], .btn[hidden] { display: none !important; }
+.hidden { display: none !important; }
+
+button.primary, .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+button.primary:hover:not(:disabled), .btn.primary:hover:not(:disabled) {
+  filter: brightness(1.12);
+  background: var(--accent);
+  color: var(--bg);
+}
+button.danger, .btn.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+button.danger:hover:not(:disabled), .btn.danger:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.10);
+  color: var(--bad);
+}
+button.ghost, .btn.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted-strong);
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────── */
+
+input[type="text"], input[type="number"], input[type="url"], select, textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  padding: var(--s-2) var(--s-3);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  width: 100%;
+  transition: border-color 0.12s, background 0.12s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-raised);
+  box-shadow: 0 0 0 1px var(--accent-bg);
+}
+textarea { resize: vertical; line-height: 1.5; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  padding: 0;
+  height: 18px;
+  border: 0;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--border-strong);
+}
+input[type="range"]::-moz-range-track {
+  height: 2px;
+  background: var(--border-strong);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border: 0;
+  margin-top: -4px;
+  box-shadow: 0 0 6px var(--accent);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border: 0;
+  box-shadow: 0 0 6px var(--accent);
+  cursor: pointer;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+}
+label input, label select, label textarea {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.field-row {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+.field-row label { flex: 1; min-width: 8rem; }
+
+/* ── Cards ──────────────────────────────────────────────────────── */
+
+.card {
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: var(--s-4) var(--s-5);
+  margin-bottom: var(--s-4);
+  position: relative;
+}
+/* Corner brackets — applied to every card. Tiny, subtle. */
+.card::before, .card::after {
+  content: '';
+  position: absolute;
+  width: 8px; height: 8px;
+  border: 1px solid var(--border-strong);
+  transition: border-color 0.2s;
+}
+.card::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.card::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.card:hover::before, .card:hover::after { border-color: var(--accent); }
+
+.card h3 {
+  margin: 0 0 var(--s-3);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  color: var(--fg-strong);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.card h3::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  display: inline-block;
+  box-shadow: 0 0 5px var(--accent);
+}
+.card .card-sub {
+  color: var(--muted-strong);
+  font-size: 0.8rem;
+  margin: calc(-1 * var(--s-1)) 0 var(--s-4);
+  max-width: 54rem;
+  line-height: 1.65;
+}
+.card-actions {
+  display: flex;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+details.card { padding: var(--s-4) var(--s-5); }
+details.card > summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  color: var(--fg-strong);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::before {
+  content: '+';
+  color: var(--accent);
+  font-weight: 400;
+  width: 0.9em;
+  display: inline-block;
+}
+details.card[open] > summary::before { content: '−'; }
+details.card[open] > summary { margin-bottom: var(--s-3); }
+
+/* ── Tables ─────────────────────────────────────────────────────── */
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+table.data th, table.data td {
+  padding: var(--s-2) var(--s-3);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+table.data th {
+  color: var(--muted-strong);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.66rem;
+}
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data tbody tr { transition: background 0.1s; position: relative; }
+table.data tbody tr:hover { background: var(--bg-hover); }
+table.data tbody tr:hover td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+
+/* ── Chat ───────────────────────────────────────────────────────── */
+
+.chat-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+  gap: var(--s-4);
+  align-items: start;
+}
+@media (max-width: 860px) { .chat-grid { grid-template-columns: 1fr; } }
+
+.chat-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 18rem;
+  max-height: calc(100vh - 22rem);
+  padding: 0;
+}
+/* Wrap that owns the scrollable messages area. The jump-to-latest
+ * button is absolutely-positioned inside this wrap so it sits at the
+ * bottom-of-scroll-area, immediately above the composer. Keeping it OUT
+ * of the messages div prevents it from scrolling with content; keeping
+ * it inside the wrap (not chat-surface) prevents it from being measured
+ * against the composer, which has dynamic height. */
+.chat-messages-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;  /* lets flex actually constrain the child scroller */
+  display: flex;
+  flex-direction: column;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s-3) var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  /* JS controls scroll position directly; no CSS smooth-scroll because
+   * it would race with our stick-to-bottom tracking. */
+  scroll-behavior: auto;
+}
+.chat-composer {
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  border-top: 1px solid var(--border);
+}
+
+/* Jump-to-latest pill — pinned to the bottom of the messages wrap, which
+ * ends right at the composer's top edge. Never overlaps the composer. */
+.jump-to-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: var(--s-3);
+  transform: translateX(-50%);
+  padding: var(--s-1) var(--s-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  z-index: 5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  animation: jump-in 0.15s ease-out;
+  white-space: nowrap;
+}
+.jump-to-bottom:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+@keyframes jump-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to   { opacity: 1; transform: translate(-50%, 0);    }
+}
+.chat-messages:empty::before {
+  content: '$ load the model to begin.';
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  display: block;
+  padding: var(--s-5);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.msg {
+  border-left: 2px solid var(--border-strong);
+  padding: var(--s-3) var(--s-4);
+  background: transparent;
+  transition: border-color 0.2s;
+}
+.msg.user { border-left-color: var(--accent); }
+.msg.model { border-left-color: var(--phosphor); }
+.msg-who {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  margin-bottom: var(--s-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  font-weight: 500;
+}
+.msg-who .meta {
+  color: var(--muted-strong);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.7rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.msg.user  .msg-who > span:first-child { color: var(--accent); }
+.msg.model .msg-who > span:first-child { color: var(--phosphor); }
+.msg-text { color: var(--fg); font-size: 0.9rem; line-height: 1.65; }
+.msg.user .msg-text {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  white-space: pre-wrap;
+}
+.msg-text p { margin: 0 0 var(--s-2); }
+.msg-text p:last-child { margin-bottom: 0; }
+.msg-text pre {
+  background: var(--bg-plot);
+  border: 1px solid var(--border);
+  padding: var(--s-3);
+  overflow-x: auto;
+  overflow-y: hidden;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  position: relative;
+}
+/* Language chip on fenced code blocks. Only shown when marked assigned a
+ * language-<lang> class on the inner <code>. Uses :has() — supported in
+ * all modern browsers. */
+.msg-text pre:has(> code[class*="language-"]) { padding-top: var(--s-4); }
+.msg-text pre:has(> code.language-js)         { --lang: 'js'; }
+.msg-text pre:has(> code.language-ts)         { --lang: 'ts'; }
+.msg-text pre:has(> code.language-python)     { --lang: 'py'; }
+.msg-text pre:has(> code.language-rust)       { --lang: 'rs'; }
+.msg-text pre:has(> code.language-go)         { --lang: 'go'; }
+.msg-text pre:has(> code.language-bash)       { --lang: 'sh'; }
+.msg-text pre:has(> code.language-sh)         { --lang: 'sh'; }
+.msg-text pre:has(> code.language-json)       { --lang: 'json'; }
+.msg-text pre:has(> code.language-html)       { --lang: 'html'; }
+.msg-text pre:has(> code.language-css)        { --lang: 'css'; }
+.msg-text pre:has(> code[class*="language-"])::before {
+  content: var(--lang, 'code');
+  position: absolute;
+  top: 0; right: 0;
+  padding: 1px 8px;
+  background: var(--border);
+  color: var(--muted-strong);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+}
+.msg-text code {
+  background: var(--bg-input);
+  padding: 1px var(--s-1);
+  font-size: 0.9em;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+.msg-text pre code { background: transparent; border: 0; padding: 0; }
+.msg-text ul, .msg-text ol { padding-left: 1.5em; margin: 0 0 var(--s-2); }
+.msg-text h1, .msg-text h2, .msg-text h3 {
+  font-family: var(--font-display);
+  margin: var(--s-3) 0 var(--s-2);
+  color: var(--fg-strong);
+  font-size: 1em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.msg-text blockquote {
+  border-left: 2px solid var(--accent);
+  padding-left: var(--s-3);
+  color: var(--muted-strong);
+  margin: 0 0 var(--s-2);
+}
+.msg-text table {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  margin: 0 0 var(--s-2);
+}
+.msg-text th, .msg-text td {
+  border: 1px solid var(--border);
+  padding: var(--s-1) var(--s-2);
+}
+
+.msg.streaming .msg-text::after {
+  content: '▍';
+  color: var(--accent);
+  animation: cursor-blink 0.8s steps(1) infinite;
+  margin-left: 2px;
+  text-shadow: 0 0 6px var(--accent);
+}
+
+.chat-composer {
+  display: flex;
+  gap: var(--s-2);
+  align-items: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: var(--s-3);
+}
+.chat-composer textarea {
+  min-height: 3rem;
+  max-height: 10rem;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+}
+.chat-composer .composer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.chat-side { display: flex; flex-direction: column; gap: var(--s-3); }
+.chat-side .stat {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: var(--s-2) 0;
+  border-bottom: 1px dotted var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.chat-side .stat:last-child { border-bottom: 0; }
+.chat-side .stat-label {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.68rem;
+}
+.chat-side .stat-value { color: var(--fg-strong); font-weight: 500; }
+
+/* ── Dialog ─────────────────────────────────────────────────────── */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--s-4);
+  backdrop-filter: blur(2px);
+}
+.dialog {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  padding: var(--s-5);
+  max-width: 32rem;
+  width: 100%;
+  position: relative;
+  animation: dialog-in 0.18s ease-out;
+}
+.dialog::before, .dialog::after {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  border: 1px solid var(--accent);
+}
+.dialog::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.dialog::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+@keyframes dialog-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+.dialog h3 {
+  margin: 0 0 var(--s-3);
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  color: var(--fg-strong);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dialog p {
+  margin: 0 0 var(--s-3);
+  color: var(--muted-strong);
+  font-size: 0.84rem;
+}
+.dialog .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+}
+
+/* ── Page footer ────────────────────────────────────────────────── */
+
+.page-footer {
+  margin-top: var(--s-7);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: flex;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+}
+.page-footer .kv b { color: var(--muted-strong); font-weight: 500; }
+.page-footer .sig { color: var(--accent); letter-spacing: 0.1em; }
+
+/* ── Utilities ──────────────────────────────────────────────────── */
+
+.row { display: flex; gap: var(--s-3); flex-wrap: wrap; align-items: center; }
+.col { display: flex; flex-direction: column; gap: var(--s-3); }
+.grow { flex: 1; }
+.hidden { display: none !important; }
+.mono-sm { font-family: var(--font-mono); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+.muted   { color: var(--muted-strong); }
+.good    { color: var(--good); }
+.warn    { color: var(--warn); }
+.bad     { color: var(--bad); }
+.accent  { color: var(--accent); }
+.phosphor{ color: var(--phosphor); }
+.hr { border: 0; border-top: 1px solid var(--border); margin: var(--s-3) 0; }
+.n  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ── Empty state + spinner ──────────────────────────────────────── */
+
+.empty {
+  padding: var(--s-5) var(--s-4);
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  border: 1px dashed var(--border);
+  background: transparent;
+}
+
+.spinner {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border: 1.5px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.chart-wrap { overflow-x: auto; overflow-y: hidden; }
+
+/* ── Global reveal keyframe ─────────────────────────────────────── */
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* Body root gets a soft animation container so the page settles in. */
+.page { animation: reveal 0.4s ease-out; }

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+    <title>gemma4-webgpu · browser-local Gemma 4 E2B, purpose-built WGSL</title>
+    <meta name="description" content="Run Gemma 4 E2B locally in your browser via WebGPU. Purpose-built WGSL over raw WebGPU. Chat, bench, profile, and cross-lab diff — all on-device." />
+    <link rel="stylesheet" href="/app/styles.css" />
+    <script type="module" src="/app/main.ts"></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <div class="brand">
+          <h1>gemma4-webgpu</h1>
+          <p class="tagline">
+            A browser-local inference engine for Gemma 4 E2B. Purpose-built WGSL
+            over raw WebGPU. Every token generated on your GPU — no server, no
+            API key, no upload.
+          </p>
+        </div>
+        <nav>
+          <a data-repo-link href="#" target="_blank" rel="noopener">github ↗</a>
+        </nav>
+      </header>
+
+      <div class="status-bar" id="status-bar">
+        <span class="status-chip uninit" id="status-chip">
+          <span class="dot"></span>
+          <span class="status-chip-label">uninit</span>
+        </span>
+        <span class="status-line" id="status-line">Idle · load the model to begin.</span>
+        <span class="status-meta" id="status-meta"></span>
+      </div>
+
+      <div id="load-hero" class="load-hero">
+        <h2>Load the model</h2>
+        <p>
+          First load streams the Q4_K_M GGUF (~2.9 GB) from Hugging Face and
+          CPU-dequantizes it to F16 on the GPU. Budget 70–90&nbsp;s on a fast
+          link. After that every token is generated locally; reopening the tab
+          reloads from the browser's HTTP cache.
+        </p>
+        <div class="row">
+          <button id="btn-load" class="primary" type="button">Load Gemma 4 E2B</button>
+          <span class="muted mono-sm">
+            Requires a WebGPU browser with the <code>shader-f16</code> feature.
+          </span>
+        </div>
+        <div id="load-progress" class="progress hidden">
+          <div id="load-progress-label">…</div>
+          <div class="progress-bar"><div class="progress-bar-fill" id="load-progress-fill" style="width: 0%"></div></div>
+        </div>
+      </div>
+
+      <nav class="tabs" id="tabs" role="tablist" aria-label="gemma4-webgpu panels">
+        <button class="tab active" data-tab="chat"          role="tab">chat</button>
+        <button class="tab"        data-tab="bench"         role="tab">bench</button>
+        <button class="tab"        data-tab="profile"       role="tab">profile</button>
+        <button class="tab"        data-tab="correctness"   role="tab">correctness</button>
+        <button class="tab"        data-tab="tuning"        role="tab">tuning</button>
+        <button class="tab"        data-tab="device-report" role="tab">device report</button>
+        <button class="tab"        data-tab="weight-probes" role="tab">weight probes</button>
+      </nav>
+
+      <section class="panel active" data-panel="chat"          id="panel-chat"></section>
+      <section class="panel"        data-panel="bench"         id="panel-bench"></section>
+      <section class="panel"        data-panel="profile"       id="panel-profile"></section>
+      <section class="panel"        data-panel="correctness"   id="panel-correctness"></section>
+      <section class="panel"        data-panel="tuning"        id="panel-tuning"></section>
+      <section class="panel"        data-panel="device-report" id="panel-device-report"></section>
+      <section class="panel"        data-panel="weight-probes" id="panel-weight-probes"></section>
+
+      <footer class="page-footer">
+        <div class="kv">
+          <b>wgsl</b>://0.1 · <b>engine</b>=gemma4-e2b · <b>quant</b>=q4_k_m · <b>precision</b>=f16-gpu
+        </div>
+        <div class="kv">
+          <b>lic</b>=apache-2.0 · <b>ref-impl</b> · <a data-repo-link href="#" target="_blank" rel="noopener">src ↗</a>
+        </div>
+        <div class="sig">// reference implementation</div>
+      </footer>
+
+      <div id="dialog-root"></div>
+    </div>
+  </body>
+</html>

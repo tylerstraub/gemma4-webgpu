@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.vite/
+.playwright-mcp/
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Reference generation: the Python script's own caches + intermediate dumps.
+# The canonical reference tensors at public/ref/*.npz ARE tracked — they're
+# small, stable, and make out-of-box correctness verification zero-setup.
+reference/**/dumps/
+reference/**/.venv/
+reference/**/__pycache__/
+reference/**/.cache/

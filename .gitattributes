@@ -1,0 +1,22 @@
+# Normalize line endings across platforms.
+# All text files are stored with LF in the repo; working-tree endings
+# are converted per the platform on checkout.
+* text=auto eol=lf
+
+# Windows-specific scripts must stay CRLF so they run correctly.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary formats — never munge.
+*.npz binary
+*.gguf binary
+*.bin binary
+*.wasm binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+    <title>gemma4-webgpu — workbench</title>
+    <script type="module" src="/workbench/main.ts"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+      }
+      body {
+        max-width: 48rem;
+        margin: 3rem auto;
+        padding: 0 1.25rem;
+        line-height: 1.55;
+      }
+      h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+      p.tagline { margin-top: 0; color: #666; }
+      .note {
+        margin-top: 2rem;
+        padding: 0.75rem 1rem;
+        border-left: 3px solid #999;
+        background: #f6f6f6;
+        color: #444;
+      }
+      button {
+        font: inherit;
+        padding: 0.4rem 0.85rem;
+        margin-right: 0.5rem;
+        border: 1px solid #999;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+      }
+      button:hover { background: #f0f0f0; }
+      #report {
+        max-height: 24rem;
+        overflow: auto;
+        padding: 0.75rem;
+        border: 1px solid #ccc;
+        background: #fafafa;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+      }
+      @media (prefers-color-scheme: dark) {
+        .note { background: #1c1c1c; color: #bbb; border-left-color: #555; }
+        p.tagline { color: #aaa; }
+        button { background: #1c1c1c; color: #ddd; border-color: #555; }
+        button:hover { background: #2a2a2a; }
+        #report { background: #1c1c1c; border-color: #444; color: #ddd; }
+      }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    </style>
+  </head>
+  <body>
+    <h1>Workbench</h1>
+    <p class="tagline">
+      Interactive diagnostic interface — bench, profile, cross-lab diff, and
+      device reporting, running directly in your browser on your hardware.
+    </p>
+
+    <p><a href="./">← Chat with Gemma 4</a></p>
+
+    <div id="status-wrap">
+      <h2>Status</h2>
+      <pre id="status">loading…</pre>
+    </div>
+
+    <h2>Actions</h2>
+    <p>
+      <button id="btn-init" type="button">1. Load model (~70–90s)</button>
+      <button id="btn-collect-report" type="button">2. Run diagnostic &amp; copy report</button>
+    </p>
+
+    <h2>Report</h2>
+    <pre id="report">(nothing collected yet — click the buttons above, or use the console to drive <code>window.lab</code> directly)</pre>
+
+    <div class="note">
+      <strong>Agent-first.</strong> The primary interface is the JSON API
+      at <code>window.lab</code>. The buttons above are a minimal
+      human-facing surface; every verb has a programmatic equivalent:
+      <pre>
+await window.lab.init('e2b');                   // ~70–90s first load
+await window.lab.bench('Hello, how are you?', { maxTokens: 64 });
+await window.lab.bench(undefined, { maxTokens: 200 });
+await window.lab.loadReferenceTensors('/ref/smoke.npz');
+await window.lab.crossLabDiff({ afterLayer: 33 });
+const { markdown } = await window.lab.collectDiagnosticReport();
+await window.lab.copyToClipboard(markdown);</pre>
+
+      <p style="margin-top: 0.75rem; margin-bottom: 0;">
+        Once the diagnostic report is copied, open a new GitHub issue
+        with the <em>device-report</em> template and paste. That's the
+        contribution flow — hardware data from real devices lands as
+        structured, parseable issues and rolls into the project's
+        calibration + tuning-profile registry.
+      </p>
+    </div>
+  </body>
+</html>
